@@ -1,0 +1,36 @@
+Scenario:Average Start up Time for an OBU including Linux boot time(Hard reboot with ignition)
+#OBU4
+connect to device {OBU4}
+obu cat /etc/banner
+obu file config {/etc/config/v2vi_obe.conf, BSMEnabled, 1}
+obu file config {/etc/config/v2vi_obe.conf, EnableTxRx, 3}
+obu file config {/etc/config/v2vi_obe.conf, BSMSecurityEnable, 1}
+obu file config {/etc/config/v2vi_obe.conf, BSMTxNoPosAvailable, 1}
+obu file config {/etc/config/v2vi_obe.conf, LogFileFormat, 1}
+obu halt;run
+obu asd_stats -b {@var1, Num Tx}
+check status {@var1, 0, gt}
+obu general command {date>date.txt}
+run pwr command {switch=SWITCH1, status=OFF, port=8}
+run pwr command {switch=SWITCH1, status=ON, port=8}
+sleep {240}
+#OBU4
+connect to device {OBU4}
+obu cat /etc/banner
+obu scp {date.txt, resource/files/}
+get timestamp from file {@time1, date.txt}
+convert time to secs {@time1_sec, @time1}
+obu asd_stats -b {@var1, Running}
+check status {@var1, 1, eq}
+obu asd_stats -b {@var1, Num Tx}
+check status {@var1, 0, gt}
+
+/*obu bsm log get and filter {LogRecType,TX,2}
+/*obu bsm log get value {@time1,TimeStamp_ms,index=-1}
+
+obu bsm log get and filter {LogRecType,TX}
+obu bsm log get value {@time2,TimeStamp,index=0}
+convert time to secs {@time2_sec, @time2}
+gen math operation {@diff_sec, @time2_sec, @time1_sec,sub}
+check status {@diff_sec, 0, gt}
+child close {OBU4}

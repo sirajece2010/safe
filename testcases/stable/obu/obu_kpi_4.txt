@@ -1,0 +1,36 @@
+Scenario:Average time to upgrade the board the OBU ( -n option)
+#OBU1
+connect to device {OBU1}
+obu cat /etc/banner
+obu file config {/etc/config/v2vi_obe.conf, BSMEnabled, 1}
+obu file config {/etc/config/v2vi_obe.conf, EnableTxRx, 3}
+obu file config {/etc/config/v2vi_obe.conf, BSMSecurityEnable, 1}
+obu file config {/etc/config/v2vi_obe.conf, BSMTxNoPosAvailable, 1}
+obu file config {/etc/config/v2vi_obe.conf, LogFileFormat, 1}
+obu halt;run
+obu scp sys {resource/files/MW1000-I.MX6-ext4-6.0.99.24-emmc.image, /tmp/}
+obu sysupgrade -n {/tmp/MW1000-I.MX6-ext4-6.0.99.24-emmc.image}
+sleep {240}
+
+#OBU1
+connect to device {OBU1}
+obu cat /etc/banner
+/*sleep {30}
+obu asd_stats -b {@var1, Running}
+check status {@var1, 1, eq}
+obu asd_stats -b {@var1, Num Tx}
+check status {@var1, 0, gt}
+gen math operation {@excess_sec, @var1, 10, div}
+
+obu asd_stats -b {@var2, Last tx/rx timestamp}
+convert time to secs {@time2_sec, @var2}
+gen math operation {@time2_sec, @time2_sec, 2, sub}
+gen math operation {@time2_sec, @time2_sec, @excess_sec, sub}
+
+obu bsm log get and filter {LogRecType,TX}
+obu bsm log get value {@time1,TimeStamp,index=-1}
+convert time to secs {@time1_sec, @time1}
+
+gen math operation {@diff, @time2_sec, @time1_sec,sub}
+check status {@diff, 0, gt}
+child close {OBU1}

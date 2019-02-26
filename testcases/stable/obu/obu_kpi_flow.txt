@@ -1,0 +1,5 @@
+Scenario:Average Start up Time for an OBU including Linux boot time(Hard reboot with ignition)
+#OBU1
+connect to device {OBU1}
+obu cat /etc/banner
+child close {OBU1}

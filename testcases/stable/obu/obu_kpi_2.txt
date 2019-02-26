@@ -1,0 +1,26 @@
+Scenario:Average Start up Time for an OBU excluding Linux boot time ( Halt ; run)
+#OBU1
+connect to device {OBU1}
+obu cat /etc/banner
+obu file config {/etc/config/v2vi_obe.conf, BSMEnabled, 1}
+obu file config {/etc/config/v2vi_obe.conf, BSMSecurityEnable, 1}
+obu file config {/etc/config/v2vi_obe.conf, EnableTxRx, 3}
+obu file config {/etc/config/v2vi_obe.conf, LogFileFormat, 1}
+obu halt;run
+sleep {5}
+obu asd_stats -b {@var1, Num Tx}
+check status {@var1, 0, gt}
+obu halt
+obu bsm log get and filter {LogRecType,TX}
+obu bsm log get value {@time1,TimeStamp_ms,index=-1}
+obu run
+obu asd_stats -b {@var1, Running}
+check status {@var1, 1, eq}
+obu asd_stats -b {@var1, Num Tx}
+check status {@var1, 0, gt}
+obu bsm log get and filter {LogRecType,TX}
+obu bsm log get value {@time2,TimeStamp_ms,index=0}
+gen math operation {@diff, @time2, @time1, sub}
+check status {@diff, 0, gt}
+gen math operation {@total_time_sec, @diff, 1000, div}
+child close {OBU1}

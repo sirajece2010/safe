@@ -1,0 +1,43 @@
+Scenario:Average transmit latency between V2X stack and BSM transmitted by the driver with Security (Digest)
+#OBU2
+connect to device {OBU2}
+obu cat /etc/banner
+obu scp sys {resource/files/openwrt-imx6-flex-emmc.img, /tmp/}
+obu sysupgrade -n {/tmp/openwrt-imx6-flex-emmc.img}
+sleep {240}
+
+#OBU2
+connect to device {OBU2}
+obu cat /etc/banner
+obu file config {/etc/config/v2vi_obe.conf, BSMEnabled, 1}
+obu file config {/etc/config/v2vi_obe.conf, EnableTxRx, 1}
+obu file config {/etc/config/v2vi_obe.conf, BSMSecurityEnable, 1}
+obu file config {/etc/config/v2vi_obe.conf, BSMTxNoPosAvailable, 1}
+obu file config {/etc/config/v2vi_obe.conf, LogFileFormat, 1}
+obu file config {/etc/config/v2vi_obe.conf, BSMContinuousChanNum, 180}
+obu file config {/etc/config/Radio.conf, Radio2_Continouous_Channel, 180}
+obu file config {/etc/config/v2vi_obe.conf, CertAttachInterval_ms, 2000}
+
+obu halt;run
+
+obu asd_stats -b {@var1, Running}
+check status {@var1, 1, eq}
+obu asd_stats -b {@var1, Signing Enabled}
+check status {@var1, 1, eq}
+obu asd_stats -b {@var1, Num Tx}
+check status {@var1, 0, gt}
+obu asd_stats -b {@var1, cur tx channel}
+check status {@var1, 180, eq}
+obu general command {rmmod wlan0}
+
+obu general command {sv2x_evtd 2>/tmp/latency_8.txt &}
+sleep {2}
+obu killall {sv2x_evtd}
+obu general command {insmod wlan0}
+
+obu get latency average {@diff_nano_sec, /tmp/latency_8.txt, BSMD kpi latency tx start, Network BSMd kpi before send to driver}
+check status {@diff_nano_sec, 0, gt}
+gen math operation {@diff_milli_sec, @diff_nano_sec, 1000000, div}
+
+
+child close {OBU2}

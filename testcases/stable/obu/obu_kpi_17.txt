@@ -1,0 +1,75 @@
+Scenario:Average latency time of the OBU ipv6 connect and disconnect(without hooks the precision will be in seconds)
+#OBU1
+connect to device {OBU1}
+obu cat /etc/banner
+obu file config {/etc/config/v2vi_obe.conf, RSUAdvertiserID, "Savari_KPI"}
+obu file config {/etc/config/v2vi_obe.conf, BSMSecurityEnable, 1}
+obu file config {/etc/config/v2vi_obe.conf, IPV6ServiceSelectorEnable, 1}
+obu file config {/etc/config/v2vi_obe.conf, IPV6ServicePriority, 7}
+obu reboot
+
+#RSU2
+connect to device {RSU2}
+show version
+show app radio all
+
+config app store-repeat disable
+config app store-repeat updateconf
+
+config app immediate-forward disable
+config app immediate-forward updateconf
+
+config app tcd disable
+config app tcd updateconf
+
+config app ipv6-provider enable
+config app ipv6-provider wsa advertiser-id Savari_KPI
+config app ipv6-provider updateconf
+
+show system app-status {STORE-REPEAT}
+check status {@status,N,eq,1}
+show system app-status {SPAT}
+check status {@status,N,eq,1}
+show system app-status {MAP}
+check status {@status,N,eq,1}
+show system app-status {WSA/IPV6}
+check status {@status,Y,eq,3}
+/* commment this line (utils standby) once the below bug fixed
+utils standby
+direct to shell mode {RSU2}
+obu cat /etc/banner
+rsu ifconfig ath0 {@rsu_mac, HWaddr}
+child close {RSU2}
+sleep {200}
+
+#OBU1
+connect to device {OBU1}
+obu cat /etc/banner
+/*****************************ipv6 connection check commented because of the bug:MW1000-790
+/*obu asd_stats -i {@var1, Running}
+/*check status {@var1, 1, eq}
+/*obu asd_stats -i {@var1, connected RSE mac}
+/*check status {@var1, @rsu_mac, in}
+/*obu asd_stats -i {@var1, advertiser id}
+/*check status {@var1, Savari_KPI, eq}
+/*****************************
+
+#RSU2
+connect to device {RSU2}
+/*utils standby /* uncommment this line once the above bug fixed
+utils run {immediate}
+
+#OBU1
+obu tcpdump {@output, ath0, Pin, @rsu_mac, slp=60}
+get timestamp from file {@time2, tcpdump.txt}
+convert time to secs {@time2_sec, @time2}
+
+obu asd_stats -i {@time1, Time of Connection}
+convert time to secs {@time1_sec, @time1}
+gen math operation {@diff_sec, @time1_sec, @time2_sec, sub}
+check status {@diff_sec, 0, gt}
+
+child close {OBU1}
+#RSU2
+child close {RSU2}
+
